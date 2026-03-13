@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="refresh" content="15">
+  <style>
+    body {
+      background: #050505;
+      color: #FFB000;
+      font-family: 'Courier New', monospace;
+      margin: 0;
+      padding: 40px;
+      text-transform: uppercase;
+    }
+
+    .header {
+      border-bottom: 4px double #333;
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      margin: 0;
+      color: #fff;
+    }
+
+    .clock {
+      font-size: 2rem;
+      color: #666;
+    }
+
+    .bus-row {
+      display: flex;
+      padding: 25px 0;
+      border-bottom: 2px solid #222;
+      align-items: center;
+    }
+
+    .line-box {
+      font-size: 4rem;
+      font-weight: bold;
+      width: 150px;
+      color: #fff;
+    }
+
+    .destination {
+      font-size: 2.5rem;
+      flex-grow: 1;
+    }
+
+    .time-info {
+      text-align: right;
+      width: 350px;
+    }
+
+    .mins-away {
+      font-size: 4rem;
+      font-weight: bold;
+      color: #00FF41;
+    }
+
+    .times-small {
+      font-size: 1.2rem;
+      color: #888;
+      margin-top: 10px;
+    }
+
+    .live-tag {
+      background: #00FF41;
+      color: #000;
+      padding: 2px 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    .btn-notify {
+      background: #4a8358;
+      color: black;
+      border: none;
+      padding: 15px;
+      cursor: pointer;
+      font-family: monospace;
+      font-weight: bold;
+      margin-bottom: 20px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <button class="btn-notify" onclick="enableNotifications()">🔔 ENABLE 4-MIN ALERTS</button>
+
+  <div class="header">
+    <h1>WAR MEMORIAL DEPARTURES</h1>
+    <div class="clock">{{ now }}</div>
+  </div>
+
+  {% for bus in buses %}
+  <div class="bus-row" data-id="{{ bus.id }}" data-line="{{ bus.line }}" data-mins="{{ bus.mins }}"
+    data-dest="{{ bus.dest }}">
+    <div class="line-box">{{ bus.line }}</div>
+    <div class="destination">
+      {{ bus.dest[:22] }}
+      {% if bus.is_live %}<span class="live-tag">LIVE</span>{% endif %}
+    </div>
+    <div class="time-info">
+      <div class="mins-away" style="color: {{ '#FF3131' if bus.mins <= 1 else ('#00FF41' if bus.is_live else '#FFB000') }};">
+        {% if bus.mins <= 1 %}DUE{% else %}{{ bus.mins }} MIN{% endif %} </div>
+          <div class="times-small">
+            SCHED: {{ bus.sched }} | EXP: {{ bus.expected }}
+          </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <script>
+      function enableNotifications() {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            new Notification("System Active", { body: "You will be alerted when a bus is 4 minutes away." });
+          }
+        });
+      }
+
+      window.onload = function () {
+        if (Notification.permission === "granted") {
+          const rows = document.querySelectorAll('.bus-row');
+
+          // Get list of already notified buses from Session Storage
+          let notified = JSON.parse(sessionStorage.getItem('notifiedBuses') || "[]");
+
+          rows.forEach(row => {
+            const id = row.getAttribute('data-id');
+            const mins = parseInt(row.getAttribute('data-mins'));
+            const line = row.getAttribute('data-line');
+            const dest = row.getAttribute('data-dest');
+
+            // If bus is 4 mins away and NOT already notified in this session
+            if (mins === 4 && !notified.includes(id)) {
+              new Notification(`Bus ${line} in 4 Mins!`, {
+                body: `The ${line} to ${dest} is approaching.`,
+              });
+
+              // Mark as notified
+              notified.push(id);
+            }
+          });
+
+          // Save updated list back to session storage
+          sessionStorage.setItem('notifiedBuses', JSON.stringify(notified));
+        }
+      };
+    </script>
+</body>
+
+</html>
